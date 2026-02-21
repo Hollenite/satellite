@@ -178,16 +178,12 @@ if image is not None and mask is not None:
         else:
             # Alignment check
             if crs is not None:
-                import rasterio
-                with warnings.catch_warnings(record=True) as w:
-                    warnings.simplefilter("always")
-                    aligned = validate_polygon_raster_alignment(
-                        (transform.c, transform.f + transform.e * mask.shape[0],
-                         transform.c + transform.a * mask.shape[1], transform.f),
-                        [p["geometry"] for p in polygons],
-                    )
-                    for warning in w:
-                        warnings_list.append(str(warning.message))
+                aligned, align_warnings = validate_polygon_raster_alignment(
+                    (transform.c, transform.f + transform.e * mask.shape[0],
+                     transform.c + transform.a * mask.shape[1], transform.f),
+                    [p["geometry"] for p in polygons],
+                )
+                warnings_list.extend(align_warnings)
 
             # Solar estimation
             with st.spinner("Computing solar estimates..."):
@@ -251,7 +247,7 @@ if image is not None and mask is not None:
 
             # === Exports ===
             st.subheader("📥 Downloads")
-            col_dl1, col_dl2, col_dl3 = st.columns(3)
+            col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
 
             # Overlay PNG
             with col_dl1:
@@ -293,8 +289,27 @@ if image is not None and mask is not None:
                     mime="application/json",
                 )
 
-            # Report
+            # Meta JSON sidecar
             with col_dl3:
+                meta_sidecar = json.dumps({
+                    "source_raster": None,
+                    "crs_epsg": crs.to_epsg() if crs else None,
+                    "coordinates": "georeferenced" if crs else "pixel",
+                    "num_polygons": len(polygons),
+                    "warning": (
+                        "GeoJSON consumers may assume WGS84. "
+                        "Use this metadata sidecar to interpret coordinates."
+                    ),
+                }, indent=2)
+                st.download_button(
+                    "⬇️ Meta JSON",
+                    data=meta_sidecar,
+                    file_name="footprints.meta.json",
+                    mime="application/json",
+                )
+
+            # Report
+            with col_dl4:
                 report = format_report(per_roof, aggregate, config)
                 st.download_button(
                     "⬇️ Report (TXT)",

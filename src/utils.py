@@ -139,15 +139,18 @@ def validate_polygon_raster_alignment(
     raster_bounds: Tuple[float, float, float, float],
     polygons: list,
     threshold: float = 0.2,
-) -> bool:
+) -> Tuple[bool, list]:
     """
     Check that the union bounds of *polygons* overlaps with *raster_bounds*.
 
-    Prints a warning and returns False if overlap ratio < *threshold*.
+    Returns:
+        (is_aligned, warning_messages) — bool + list of warning strings.
     """
+    warn_msgs: list = []
+
     if not polygons:
-        warnings.warn("No polygons to validate alignment for.")
-        return True
+        warn_msgs.append("No polygons to validate alignment for.")
+        return True, warn_msgs
 
     # Compute union bounds of all polygons
     all_bounds = [p.bounds for p in polygons]
@@ -159,13 +162,15 @@ def validate_polygon_raster_alignment(
 
     ratio = polygon_bounds_overlap_ratio(raster_bounds, poly_union_bounds)
     if ratio < threshold:
-        warnings.warn(
+        msg = (
             f"⚠️  Low polygon/raster overlap ({ratio:.2%}). "
             f"Raster bounds: {raster_bounds}, Polygon union bounds: {poly_union_bounds}. "
             f"This may indicate a CRS mismatch or pixel-vs-geo coordinate confusion."
         )
-        return False
-    return True
+        warnings.warn(msg)
+        warn_msgs.append(msg)
+        return False, warn_msgs
+    return True, warn_msgs
 
 
 # ---------------------------------------------------------------------------

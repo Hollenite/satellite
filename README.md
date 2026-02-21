@@ -160,6 +160,14 @@ outputs/footprints.meta.json     ← CRS, transform, coordinate type
 
 All parameters are **configurable** in the Streamlit sidebar.
 
+> [!IMPORTANT]
+> **Formula clarity:** `monthly_generation_kwh_per_kw` is a **delivered** value — it already accounts for `performance_ratio`, inverter losses, soiling, and temperature derating. Do NOT multiply by `performance_ratio` again. The formula is:
+> ```
+> system_kw = usable_area × panel_power_density
+> monthly_kwh = system_kw × monthly_generation_kwh_per_kw
+> annual_kwh = monthly_kwh × 12  (or override via annual_generation_kwh_per_kw)
+> ```
+
 ### Limitations
 - No shading analysis
 - No roof tilt/azimuth modelling

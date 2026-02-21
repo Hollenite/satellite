@@ -39,7 +39,20 @@ class SolarConfig:
     """Average daily peak sun hours. India avg: 4–6 depending on region."""
 
     monthly_generation_kwh_per_kw: float = 110.0
-    """Estimated monthly generation per kW installed. India avg: 100–130."""
+    """
+    Estimated monthly energy DELIVERED per kW installed (kWh/kW/month).
+
+    This is a DELIVERED value — it already accounts for performance_ratio,
+    inverter losses, soiling, temperature derating, etc.
+    Do NOT multiply by performance_ratio again.
+    India average: 100–130 depending on region and season.
+    """
+
+    annual_generation_kwh_per_kw: Optional[float] = None
+    """
+    Optional override for annual generation (kWh/kW/year).
+    When set, this is used instead of monthly_generation_kwh_per_kw * 12.
+    """
 
     # -- Labels --
     assumptions_label: str = "India residential rooftop (conservative defaults)"
@@ -91,7 +104,10 @@ def estimate_single_roof(
     usable_area = area_m2 * config.roof_usability_factor
     system_kw = usable_area * config.panel_power_density_kw_per_m2
     monthly_kwh = system_kw * config.monthly_generation_kwh_per_kw
-    annual_kwh = monthly_kwh * 12
+    if config.annual_generation_kwh_per_kw is not None:
+        annual_kwh = system_kw * config.annual_generation_kwh_per_kw
+    else:
+        annual_kwh = monthly_kwh * 12
 
     return {
         "roof_area": round(area_m2, 2),
@@ -213,7 +229,9 @@ def format_report(
     lines.append(f"  Panel power density: {config.panel_power_density_kw_per_m2} kW/m²")
     lines.append(f"  Performance ratio: {config.performance_ratio}")
     lines.append(f"  Peak sun hours/day: {config.peak_sun_hours_per_day}")
-    lines.append(f"  Monthly gen factor: {config.monthly_generation_kwh_per_kw} kWh/kW")
+    lines.append(f"  Monthly gen factor: {config.monthly_generation_kwh_per_kw} kWh/kW (delivered, already derated)")
+    if config.annual_generation_kwh_per_kw is not None:
+        lines.append(f"  Annual gen override: {config.annual_generation_kwh_per_kw} kWh/kW/yr")
     lines.append("")
 
     # Limitations
