@@ -72,8 +72,14 @@ def mask_to_polygons(
 
     binary = (mask > 0).astype(np.uint8)
 
-    # Choose transform
-    effective_transform = None if use_pixel_coords else transform
+    # Choose transform — rasterio >= 1.5 requires a valid Affine, so we use
+    # an identity transform for pixel-coordinate mode instead of None.
+    if use_pixel_coords or transform is None:
+        from rasterio.transform import from_bounds
+        effective_transform = from_bounds(0, 0, mask.shape[1], mask.shape[0],
+                                          mask.shape[1], mask.shape[0])
+    else:
+        effective_transform = transform
 
     results = []
     for geom_dict, value in rio_shapes(binary, transform=effective_transform):
